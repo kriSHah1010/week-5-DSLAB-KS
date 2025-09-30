@@ -4,7 +4,7 @@
 import streamlit as st
 from apputil import (
     survival_demographics,
-    visualize_demographic,
+    visualize_demographic, 
     family_groups,
     last_names,
     visualize_families,
