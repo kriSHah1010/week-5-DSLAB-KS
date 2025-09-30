@@ -5,7 +5,7 @@
 # Exercises 1, 2, and Bonus Question
 # -----------------------------------
 
-import pandas as pd
+import pandas as pd 
 import plotly.express as px
 
 
