@@ -38,9 +38,6 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
     labels = ["Child", "Teen", "Adult", "Senior"]
     
     # Create age_group column as categorical with ordered=True
-    # Use right=False to make bins: [0,12) for Child, [12,19) for Teen, etc.
-    # Actually for "up to 12" we want to include 12, so let's use right=True
-    # But "up to 12" means <=12, so bins should be: (-inf,12], (12,19], (19,59], (59,inf)
     df["age_group"] = pd.cut(
         df["Age"], 
         bins=bins, 
@@ -49,30 +46,47 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
         ordered=True
     )
     
-    # Ensure it's categorical dtype
+    # Ensure it's categorical dtype with all categories
     df["age_group"] = pd.Categorical(df["age_group"], categories=labels, ordered=True)
     
-    # Use lowercase column names to match autograder expectations
+    # Use lowercase column names
     df['pclass'] = df['Pclass']
     
-    # Group by pclass, sex, age_group - use observed=True to include all combinations
+    # Create all possible combinations FIRST
+    # Get unique values for each grouping column
+    all_pclasses = sorted(df['pclass'].unique())
+    all_sexes = sorted(df['sex'].unique())
+    all_age_groups = labels  # All categories including those that might not exist
+    
+    # Create a MultiIndex with all possible combinations
+    import itertools
+    all_combinations = pd.MultiIndex.from_product(
+        [all_pclasses, all_sexes, all_age_groups],
+        names=['pclass', 'sex', 'age_group']
+    )
+    
+    # Now do the groupby with observed=True
     grouped = df.groupby(["pclass", "sex", "age_group"], observed=True).agg(
         n_passengers=("PassengerId", "count"),
         n_survivors=("Survived", "sum")
     ).reset_index()
-
+    
+    # Reindex to include all combinations
+    grouped.set_index(['pclass', 'sex', 'age_group'], inplace=True)
+    grouped = grouped.reindex(all_combinations).reset_index()
+    
     # Calculate survival rate
     grouped["survival_rate"] = grouped["n_survivors"] / grouped["n_passengers"]
 
-    # Fill NaN values - important for groups with no members
-    grouped["n_passengers"] = grouped["n_passengers"].fillna(0)
-    grouped["n_survivors"] = grouped["n_survivors"].fillna(0)
+    # Fill NaN values - IMPORTANT for groups with no members
+    grouped["n_passengers"] = grouped["n_passengers"].fillna(0).astype(int)
+    grouped["n_survivors"] = grouped["n_survivors"].fillna(0).astype(int)
     grouped["survival_rate"] = grouped["survival_rate"].fillna(0)
     
     # Sort for easy interpretation
     grouped = grouped.sort_values(["pclass", "sex", "age_group"])
     
-    # Ensure the required columns are present
+    # Ensure the required columns are present and in correct order
     required_columns = ["pclass", "sex", "age_group", "n_passengers", "n_survivors", "survival_rate"]
     grouped = grouped[required_columns]
     
@@ -94,7 +108,7 @@ def family_groups(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
     """
     df = pd.read_csv(url)
 
-    # 1. Calculate Family Size - use lowercase as per autograder
+    # 1. Calculate Family Size
     df['family_size'] = df['SibSp'] + df['Parch'] + 1
     
     # Use lowercase pclass
