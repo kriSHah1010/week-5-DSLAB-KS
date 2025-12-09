@@ -38,6 +38,7 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
     labels = ["Child", "Teen", "Adult", "Senior"]
     
     # Create age_group column as categorical with ordered=True
+    # Using pd.cut with right=True and ordered=True creates a Categorical dtype
     df["age_group"] = pd.cut(
         df["Age"], 
         bins=bins, 
@@ -46,9 +47,6 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
         ordered=True
     )
     
-    # Ensure it's categorical dtype with all categories
-    df["age_group"] = pd.Categorical(df["age_group"], categories=labels, ordered=True)
-    
     # Use lowercase column names
     df['pclass'] = df['Pclass']
     
@@ -56,7 +54,7 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
     # Get unique values for each grouping column
     all_pclasses = sorted(df['pclass'].unique())
     all_sexes = sorted(df['sex'].unique())
-    all_age_groups = labels  # All categories including those that might not exist
+    all_age_groups = pd.Categorical(labels, categories=labels, ordered=True)  # Make it Categorical
     
     # Create a MultiIndex with all possible combinations
     import itertools
@@ -82,6 +80,13 @@ def survival_demographics(url: str = DEFAULT_TITANIC_URL) -> pd.DataFrame:
     grouped["n_passengers"] = grouped["n_passengers"].fillna(0).astype(int)
     grouped["n_survivors"] = grouped["n_survivors"].fillna(0).astype(int)
     grouped["survival_rate"] = grouped["survival_rate"].fillna(0)
+    
+    # Ensure age_group is STILL categorical in the final output
+    grouped['age_group'] = pd.Categorical(
+        grouped['age_group'], 
+        categories=labels, 
+        ordered=True
+    )
     
     # Sort for easy interpretation
     grouped = grouped.sort_values(["pclass", "sex", "age_group"])
